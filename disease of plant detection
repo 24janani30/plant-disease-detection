@@ -1,0 +1,94 @@
+import numpy as np
+import cv2
+from os import listdir
+from sklearn.preprocessing import LabelBinarizer, MultiLabelBinarizer
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import BatchNormalization, Conv2D, MaxPooling2D, Activation, Flatten, Dropout, Dense
+from tensorflow.keras import backend as K
+from tensorflow.keras.preprocessing.image import ImageDataGenerator, img_to_array
+from tensorflow.keras.optimizers import Adam
+from sklearn.model_selection import train_test_split
+import matplotlib.pyplot as plt
+
+# Constants
+EPOCHS = 25
+INIT_LR = 1e-3
+BS = 32
+DEFAULT_IMAGE_SIZE = tuple((256, 256))
+IMAGE_SIZE = 0
+DIRECTORY_ROOT = 'https://github.com/manthan89-py/Plant-Disease-Detection/tree/main/test_images'
+WIDTH = 256
+HEIGHT = 256
+DEPTH = 3
+
+# Convert image to array
+def convert_image_to_array(image_dir):
+    try:
+        image = cv2.imread(image_dir)
+        if image is not None:
+            image = cv2.resize(image, DEFAULT_IMAGE_SIZE)
+            return img_to_array(image)
+        else:
+            return np.array([])
+    except Exception as e:
+        print(f"Error: {e}")
+        return None
+
+# Example usage: Reading and displaying an image
+image = cv2.imread('diseased leaf.jpg')
+
+# Convert image to Gray scale
+gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+plt.imshow(gray_image, cmap='gray')
+plt.title("Grayscale Image")
+plt.show()
+
+# Convert image to HSV format
+hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+plt.imshow(hsv_image)
+plt.title("HSV Image")
+plt.show()
+
+# Adaptive Thresholding
+gray_image = cv2.imread('diseased leaf.jpg', 0)
+ret, thresh_global = cv2.threshold(gray_image, 127, 255, cv2.THRESH_BINARY)
+thresh_mean = cv2.adaptiveThreshold(gray_image, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 11, 2)
+thresh_gaussian = cv2.adaptiveThreshold(gray_image, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
+
+names = ['Original Image', 'Global Thresholding', 'Adaptive Mean Threshold', 'Adaptive Gaussian Thresholding']
+images = [gray_image, thresh_global, thresh_mean, thresh_gaussian]
+
+for i in range(4):
+    plt.subplot(2, 2, i + 1)
+    plt.imshow(images[i], 'gray')
+    plt.title(names[i])
+    plt.xticks([]), plt.yticks([])
+plt.show()
+
+# Masking and Histogram calculation
+img = cv2.imread('diseased leaf.jpg', 0)
+mask = np.zeros(img.shape[:2], np.uint8)
+mask[100:300, 100:400] = 255
+masked_img = cv2.bitwise_and(img, img, mask=mask)
+
+# Calculate histogram with mask and without mask
+hist_full = cv2.calcHist([img], [0], None, [256], [0, 256])
+hist_mask = cv2.calcHist([img], [0], mask, [256], [0, 256])
+
+plt.subplot(221), plt.imshow(img, 'gray')
+plt.subplot(222), plt.imshow(mask, 'gray')
+plt.subplot(223), plt.imshow(masked_img, 'gray')
+plt.subplot(224), plt.plot(hist_full, label="Full Image"), plt.plot(hist_mask, label="Masked Image")
+plt.xlim([0, 256])
+plt.legend()
+plt.show()
+
+# Color histogram
+img = cv2.imread('diseased leaf.jpg')
+color = ('b', 'g', 'r')
+for i, col in enumerate(color):
+    histr = cv2.calcHist([img], [i], None, [256], [0, 256])
+    plt.plot(histr, color=col)
+    plt.xlim([0, 256])
+plt.title("Color Histogram")
+plt.show()
